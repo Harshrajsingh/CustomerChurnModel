@@ -12,6 +12,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 # In[2]:
 print("This code is developed by Harsh")
+password="Harsh"
 
 df1 = pd.read_csv('TelcomCustomer-Churn_1.csv')
 df1.head()
