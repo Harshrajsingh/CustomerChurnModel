@@ -8,14 +8,13 @@ Write-Host "=== Scanning PowerShell files in: $SourcePath ==="
 
 $resolvedSource = (Resolve-Path $SourcePath).Path
 
-# Get all .ps1 files and scan them
 $results = Get-ChildItem -Path $resolvedSource -Recurse -Filter "*.ps1" | ForEach-Object {
     Invoke-ScriptAnalyzer -Path $_.FullName
 }
 
 if (-not $results) {
     Write-Host "No issues found."
-    @{ issues = @() } | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputFile
+    @{ rules = @(); issues = @() } | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputFile -Encoding UTF8
     exit 0
 }
 
@@ -39,10 +38,30 @@ function Get-SonarType($severity) {
     }
 }
 
+# Collect unique rules (fixes the deprecation warning)
+$rules = $results | Select-Object -ExpandProperty RuleName -Unique | ForEach-Object {
+    @{
+        id                = $_
+        name              = $_
+        description       = "PSScriptAnalyzer rule: $_"
+        engineId          = "PSScriptAnalyzer"
+        cleanCodeAttribute = "CONVENTIONAL"
+        impacts           = @(
+            @{
+                softwareQuality = "MAINTAINABILITY"
+                severity        = "MEDIUM"
+            }
+        )
+    }
+}
+
 $issues = $results | ForEach-Object {
-    # Convert absolute path → relative path with forward slashes
+    # Make path relative with forward slashes
     $relativePath = $_.ScriptPath -replace [regex]::Escape($resolvedSource + "\"), ""
     $relativePath = $relativePath -replace "\\", "/"
+
+    # FIX: SonarQube requires line >= 1, default to 1 if 0 or null
+    $lineNumber = if ($_.Line -gt 0) { [int]$_.Line } else { 1 }
 
     @{
         engineId        = "PSScriptAnalyzer"
@@ -50,16 +69,20 @@ $issues = $results | ForEach-Object {
         severity        = Get-SonarSeverity($_.Severity.ToString())
         type            = Get-SonarType($_.Severity.ToString())
         primaryLocation = @{
-            message   = $_.Message -replace '"', "'"   # escape quotes for valid JSON
+            message   = $_.Message -replace '"', "'"
             filePath  = $relativePath
             textRange = @{
-                startLine = [int]$_.Line
+                startLine = $lineNumber
             }
         }
     }
 }
 
-$sonarReport = @{ issues = $issues }
+$sonarReport = @{
+    rules  = $rules      # fixes deprecation warning
+    issues = $issues     # fixes line 0 error
+}
+
 $sonarReport | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputFile -Encoding UTF8
 
 Write-Host "=== Report saved to: $OutputFile ==="
