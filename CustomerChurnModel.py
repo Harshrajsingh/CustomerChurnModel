@@ -479,31 +479,6 @@ DecisionTree(X_train,y_train,X_test,y_test)
 
 # In[ ]:
 
-def CategoricalVariableDivision(df4):
-    #Replacing categorical values with 0 and 1 for easy standardization
-    replaceStruct = {"Partner": {"No": 0, "Yes": 1 },"Churn":{"No": 0, "Yes": 1 },"Dependents": {"No": 0, "Yes": 1 },
-                 "PaperlessBilling": {"No": 0, "Yes": 1 },"Contract": {"Month-to-month": 0, "One year": 1 ,"Two year":2}
-                    }
-    #Applying one hot encoding on categorical variables with unique values
-    oneHotCols=["gender","DeviceProtection","PhoneService","TechSupport","StreamingTV","StreamingMovies","MultipleLines","InternetService","OnlineSecurity","PaymentMethod","OnlineBackup"]
-    df4=df4.replace(replaceStruct)
-    df4=pd.get_dummies(df4, columns=oneHotCols)
-    #Dropping off unique and unnecessary columns
-    df4=df4.drop(["customerID","gender_Male","PhoneService_No","MultipleLines_No phone service","InternetService_No","OnlineSecurity_No internet service","PaymentMethod_Mailed check","OnlineBackup_No internet service","DeviceProtection_No internet service","TechSupport_No internet service","StreamingMovies_No internet service","StreamingTV_No internet service"],axis=1)
-    return df4
-
-def CategoricalVariableDivision(df4):
-    #Replacing categorical values with 0 and 1 for easy standardization
-    replaceStruct = {"Partner": {"No": 0, "Yes": 1 },"Churn":{"No": 0, "Yes": 1 },"Dependents": {"No": 0, "Yes": 1 },
-                 "PaperlessBilling": {"No": 0, "Yes": 1 },"Contract": {"Month-to-month": 0, "One year": 1 ,"Two year":2}
-                    }
-    #Applying one hot encoding on categorical variables with unique values
-    oneHotCols=["gender","DeviceProtection","PhoneService","TechSupport","StreamingTV","StreamingMovies","MultipleLines","InternetService","OnlineSecurity","PaymentMethod","OnlineBackup"]
-    df4=df4.replace(replaceStruct)
-    df4=pd.get_dummies(df4, columns=oneHotCols)
-    #Dropping off unique and unnecessary columns
-    df4=df4.drop(["customerID","gender_Male","PhoneService_No","MultipleLines_No phone service","InternetService_No","OnlineSecurity_No internet service","PaymentMethod_Mailed check","OnlineBackup_No internet service","DeviceProtection_No internet service","TechSupport_No internet service","StreamingMovies_No internet service","StreamingTV_No internet service"],axis=1)
-    return df4
 
 
 # In[ ]:
