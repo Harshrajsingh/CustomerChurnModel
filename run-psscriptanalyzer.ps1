@@ -18,35 +18,26 @@ if (-not $results) {
     exit 0
 }
 
-function Get-SonarSeverity($severity) {
+# Map severity to SonarQube impact severity (new format)
+function Get-ImpactSeverity($severity) {
     switch ($severity) {
-        "Error"       { return "CRITICAL" }
-        "Warning"     { return "MAJOR" }
-        "Information" { return "INFO" }
-        "ParseError"  { return "BLOCKER" }
-        default       { return "MINOR" }
+        "Error"       { return "HIGH" }
+        "Warning"     { return "MEDIUM" }
+        "Information" { return "LOW" }
+        "ParseError"  { return "HIGH" }
+        default       { return "LOW" }
     }
 }
 
-function Get-SonarType($severity) {
-    switch ($severity) {
-        "Error"       { return "BUG" }
-        "ParseError"  { return "BUG" }
-        "Warning"     { return "CODE_SMELL" }
-        "Information" { return "CODE_SMELL" }
-        default       { return "CODE_SMELL" }
-    }
-}
-
-# Collect unique rules (fixes the deprecation warning)
+# Build unique rules list (required in new format)
 $rules = $results | Select-Object -ExpandProperty RuleName -Unique | ForEach-Object {
     @{
-        id                = $_
-        name              = $_
-        description       = "PSScriptAnalyzer rule: $_"
-        engineId          = "PSScriptAnalyzer"
+        id                 = $_
+        name               = $_
+        description        = "PSScriptAnalyzer rule: $_"
+        engineId           = "PSScriptAnalyzer"
         cleanCodeAttribute = "CONVENTIONAL"
-        impacts           = @(
+        impacts            = @(
             @{
                 softwareQuality = "MAINTAINABILITY"
                 severity        = "MEDIUM"
@@ -55,19 +46,26 @@ $rules = $results | Select-Object -ExpandProperty RuleName -Unique | ForEach-Obj
     }
 }
 
+# Build issues list — NO severity, NO type in new format
 $issues = $results | ForEach-Object {
-    # Make path relative with forward slashes
+    # Convert absolute path to relative with forward slashes
     $relativePath = $_.ScriptPath -replace [regex]::Escape($resolvedSource + "\"), ""
     $relativePath = $relativePath -replace "\\", "/"
 
-    # FIX: SonarQube requires line >= 1, default to 1 if 0 or null
+    # SonarQube requires line >= 1
     $lineNumber = if ($_.Line -gt 0) { [int]$_.Line } else { 1 }
 
     @{
         engineId        = "PSScriptAnalyzer"
         ruleId          = $_.RuleName
-        severity        = Get-SonarSeverity($_.Severity.ToString())
-        type            = Get-SonarType($_.Severity.ToString())
+        # ← NO severity field here (forbidden in new format)
+        # ← NO type field here (forbidden in new format)
+        impacts         = @(
+            @{
+                softwareQuality = "MAINTAINABILITY"
+                severity        = Get-ImpactSeverity($_.Severity.ToString())
+            }
+        )
         primaryLocation = @{
             message   = $_.Message -replace '"', "'"
             filePath  = $relativePath
@@ -79,8 +77,8 @@ $issues = $results | ForEach-Object {
 }
 
 $sonarReport = @{
-    rules  = $rules      # fixes deprecation warning
-    issues = $issues     # fixes line 0 error
+    rules  = $rules
+    issues = $issues
 }
 
 $sonarReport | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputFile -Encoding UTF8
